@@ -1,0 +1,5 @@
+                            ADVANCE SEARCH WITH REDIS
+
+REDIS-SEARCH :-
+                * Provides secondary indexing, full text search and query language for redis.
+                * These fields enables multi-field queries, aggregation, exact phrase matching and numeric filtering for text queries.
