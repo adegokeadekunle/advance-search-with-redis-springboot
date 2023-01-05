@@ -3,3 +3,9 @@
 REDIS-SEARCH :-
                 * Provides secondary indexing, full text search and query language for redis.
                 * These fields enables multi-field queries, aggregation, exact phrase matching and numeric filtering for text queries.
+
+* Redis search stores information as Hash (using key and value pairs) or Json format(storing the entire Json object).
+* Redis search data can be retrieved using secondary indexes and full text search
+* Redis search is done based on the ranking provided on the indexes.
+* Redis search uses Stemmine => Stemming reduces a word to its stem. the result is less readable by humans but makes the text more comparable across observations.
+
