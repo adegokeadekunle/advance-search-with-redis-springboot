@@ -12,6 +12,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.Resource;
 import redis.clients.jedis.UnifiedJedis;
+import redis.clients.jedis.search.FieldName;
+import redis.clients.jedis.search.IndexDefinition;
+import redis.clients.jedis.search.IndexOptions;
+import redis.clients.jedis.search.Schema;
+
+import java.util.Arrays;
 
 @SpringBootApplication
 public class AdvanceSearchUsingRedisApplication {
@@ -29,12 +35,39 @@ public class AdvanceSearchUsingRedisApplication {
     Resource resourceFile;   // to load the json file
 
     @Bean
-    CommandLineRunner commandLineRunner(){
+    CommandLineRunner commandLineRunner() {
         return (args) -> {
+            //retrieving the data from the json file
             String data = new String(resourceFile.getInputStream().readAllBytes());
-            ObjectMapper objectMap =new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,false);
 
-            Post[] posts = objectMap.readValue(data,Post[].class);
+            //converted the data to an object with the same properties and ignored the properties that can fail with the DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES
+            ObjectMapper objectMap = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+            //converted all the object data to post
+            Post[] posts = objectMap.readValue(data, Post[].class);
+
+            //saving the data converted
+            Arrays.stream(posts).forEach(postRepository::savePost);
+
+            //creating the post schema
+
+            //the database structure has content, title , tags(which is a set of tags) and views which is a numeric value
+            Schema schema = new Schema()
+                    .addField(new Schema.Field(FieldName.of("$.content").as("content"), Schema.FieldType.TEXT, true, false)) // creating schema for the content fields
+                    .addField(new Schema.TextField((FieldName.of("$.title").as("title")))) //title
+                    .addField(new Schema.Field(FieldName.of("$.tags[*]").as("tags"), Schema.FieldType.TAG)) // tags
+                    .addField(new Schema.Field(FieldName.of("$.views").as("views"), Schema.FieldType.NUMERIC, false, true)); //views
+
+
+            //creating index definition
+
+            IndexDefinition indexDefinition =
+                    new IndexDefinition(IndexDefinition.Type.JSON) // specific index definition either JSON OR HASH
+                            .setPrefixes(new String[]{"post:"});
+
+            unifiedJedis.ftCreate("post-idx", IndexOptions.defaultOptions().setDefinition(indexDefinition),schema);
+
+
 
         };
     }
