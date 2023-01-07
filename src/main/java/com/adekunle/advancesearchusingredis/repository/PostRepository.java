@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import redis.clients.jedis.UnifiedJedis;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -26,4 +27,12 @@ public class PostRepository {
     }
 
 
+    public void deletePost() {
+        Set<String> keys = unifiedJedis.smembers("post");
+        
+        if(!keys.isEmpty()){
+            keys.stream().forEach(unifiedJedis::jsonDel);
+        }
+        unifiedJedis.del("post");
+    }
 }

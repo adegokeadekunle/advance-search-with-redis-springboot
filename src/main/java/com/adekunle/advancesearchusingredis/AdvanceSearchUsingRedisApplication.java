@@ -4,6 +4,7 @@ import com.adekunle.advancesearchusingredis.model.Post;
 import com.adekunle.advancesearchusingredis.repository.PostRepository;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -20,6 +21,7 @@ import redis.clients.jedis.search.Schema;
 import java.util.Arrays;
 
 @SpringBootApplication
+@Slf4j
 public class AdvanceSearchUsingRedisApplication {
 
     public static void main(String[] args) {
@@ -37,6 +39,15 @@ public class AdvanceSearchUsingRedisApplication {
     @Bean
     CommandLineRunner commandLineRunner() {
         return (args) -> {
+            // deleting posts if exist
+            postRepository.deletePost();
+
+            // dropping index files if exist
+            try {
+                unifiedJedis.ftDropIndex("post-idx");
+            } catch (Exception e) {
+                log.info("index of not available ");
+            }
             //retrieving the data from the json file
             String data = new String(resourceFile.getInputStream().readAllBytes());
 
@@ -65,8 +76,7 @@ public class AdvanceSearchUsingRedisApplication {
                     new IndexDefinition(IndexDefinition.Type.JSON) // specific index definition either JSON OR HASH
                             .setPrefixes(new String[]{"post:"});
 
-            unifiedJedis.ftCreate("post-idx", IndexOptions.defaultOptions().setDefinition(indexDefinition),schema);
-
+            unifiedJedis.ftCreate("post-idx", IndexOptions.defaultOptions().setDefinition(indexDefinition), schema);
 
 
         };
