@@ -20,16 +20,16 @@ public class PostSearchController {
     private final PostRepository postSearch;
 
     @GetMapping("/search")
-    public Page searchPost(@RequestParam(name = "content",required = false) String content,
-                           @RequestParam(name = "tags",required = false) Set<String> tags,
-                           @RequestParam(name = "page",defaultValue = "1") Integer page) {
+    public Page searchPost(@RequestParam(name = "content", required = false) String content,
+                           @RequestParam(name = "tags", required = false) Set<String> tags,
+                           @RequestParam(name = "page", defaultValue = "1") Integer page) {
 
         return postSearch.searchPost(content, tags, page);
 
     }
 
-
-    public List<CategoryStatistics> getTotalPostByCategory(){
+    @GetMapping("/categoryStat")
+    public List<CategoryStatistics> getTotalPostByCategory() {
         return postSearch.getTotalPostByCategory();
     }
 }

@@ -9,3 +9,127 @@ REDIS-SEARCH :-
 * Redis search is done based on the ranking provided on the indexes.
 * Redis search uses Stemmine => Stemming reduces a word to its stem. the result is less readable by humans but makes the text more comparable across observations.
 
+                           HOW REDIS IS BEING IMPLEMENTED
+    Hashes are a collection of flat field-value pairs and a great choice for representing rows in a relational database table.
+
+    JSON is best for representing documents in a document store, specially when there is a need to store nested objects and arrays.
+
+    Redis Hashes and JSON are being used to model documents across various industries, from real-time inventory management in retail,
+    through fraud detection in financial services, matching drivers with riders in digital mobility, all the way to endpoint protection in cybersecurity.
+
+                            CRUD Operations
+Reading and managing hashes is done through the HSET and HGET commands.
+
+Let's look at a few examples of working with a document that represents a product with the following structure:
+
+school:1
+--------
+name: Hall School
+description: An independent...
+class: independent/state
+type: traditional/montessori/forest...
+address_city: London
+address_street: Manor Street
+students: 342
+location: "51.445417, -0.258352"
+
+
+                       CREATE
+HSET school:1 "name" "Hall School" "description" " Spanning 10 states, this school's award-winning curriculum includes a comprehensive reading system (from letter recognition and phonics to reading full-length books), as well as math, science, social studies, and even  philosophy. " "class" "independent" "type" "traditional" "address_city" "London" "address_street" "Manor Street" "students" 342 "location" "51.445417, -0.258352"
+
+                        READ
+HGETALL school:1 // Read the whole document
+HGET school:1 description // Read the field description only
+
+                        UPDATE
+HGET school:1 students // Read the students field before the update
+HSET school:1 "students"  343 // Update the students field
+HGET school:1 students // Read the students field after the update
+
+                        DELETE AN ELEMENT
+HGET school:1  name // Read the name field before deletion
+HDEL school:1  name // Delete only the name field from the document
+HGETALL school:1 // Read the whole document to confirm the name field has been deleted
+
+                            DELETE DOCUMENT
+DEL school:1 // Delete the entire document
+HGETALL school:1 // Confirm the entire document has been deleted
+
+                               Indexing your DATA
+The Redis keyspace is unstructured and flat; by default, you can only access data by its primary key (keyname)
+making it very difficult to find a document based on a secondary characteristic, for example finding a school by
+name or listing all schools in a particular city. Redis Stack addresses this need by providing a possibility to
+index and query your data.
+
+Let's take a look at a very simple example:
+
+FT.CREATE idx:schools
+  ON HASH
+    PREFIX 1 "school:"
+  SCHEMA
+    "name" AS street TEXT NOSTEM
+    "students" NUMERIC SORTABLE
+    "address_city" AS city TAG SORTABLE
+
+
+ In the query above we specify that we want to create an index named idx:schools that will index all keys of type HASH with a prefix of school:.
+ The engine will index the fields name, students and city, making it possible to search on them. After we create the index, the indexing will
+ happen automatically and synchronously every time we create or modify a hash with the specified prefix, but the engine will also retroactively
+ index all existing documents in the database that match the specified criteria.
+
+ Let's expand this simple example to our use case:
+
+// Create an index on hash keys prefixed with "school:"
+// Note that it is possible to index either every hash or every JSON document in the keyspace or configure indexing only for a subset of the same data type documents described by a prefix.
+
+FT.CREATE idx:schools           // Index name
+  ON HASH                       // Indicates the type of data to index
+    PREFIX 1 "school:"          // Tells the index which keys it should index
+  SCHEMA
+    name TEXT NOSTEM SORTABLE   // Will be indexed as a sortable TEXT field. Stemming is disabled, which is ideal for proper names.
+    description TEXT
+    class TAG                   // Will be indexed as a TAG field. Will allow exact-match queries.
+    type TAG SEPARATOR ";"      // For tag fields, a separator indicates how the text contained in the field is to be split into individual tags
+    address_city AS city TAG
+    address_street AS address TEXT NOSTEM    // 'address_street' field will be indexed as TEXT, without stemming and can be referred to as 'street' due to the '... AS fieldname ...' construct.
+    students NUMERIC SORTABLE   // Will be indexed as a numeric field. Will permit sorting during query
+    location GEO                // Will be indexed as GEO. Will allow geographic range queries
+
+
+  You can get some additional data about your indices with the FT.LIST and FT.INFO commands:
+
+  FT._LIST // Return a list of all indices
+  FT.INFO "idx:schools" // Display information about a particular index
+
+                              Search and Querying Basics
+  Now that we instructed Redis Stack on how we want our data indexed we can run different kinds of queries. Let's look at some examples:
+
+                               Text search
+  You can run full text search queries on any field you marked to be indexed as TEXT:
+
+  // Perform a text search on all text fields: query for documents in which the word 'nature' occurs
+  FT.SEARCH idx:schools "nature"
+  // Use the RETURN statement followed by the number of fields you want to return and their names
+  FT.SEARCH idx:schools "nature" RETURN 2 name description
+
+  With Fuzzy search, we can search for words that are similar to the one we're querying for. The number of % indicates the allowed Levenshtein distance (number of different characters).
+  So the query would "culture" would match on "cultural" too, because "culture" and "cultural" have a distance of two.
+// Perform a Fuzzy text search on all text fields: query for documents with words similar to 'culture' with a Levenshtein distance of 2.
+FT.SEARCH idx:schools "%%culture%%" RETURN 2 name description
+// Perform a text search on a specific field: query for documents that have the word "innovative" in the description
+FT.SEARCH idx:schools "@description:innovative"
+
+                        Numeric, tag and geo search
+Next, let's look at how we can query on numeric, tag and geo fields:
+// Perform a numeric range query: find all schools with the number of students between 500 and 1000
+// To reference a field, use the @<field_name> construct
+// For numerical ranges, square brackets are inclusive of the listed values
+FT.SEARCH idx:schools "@students:[500,1000]"
+
+// Perform a tag search: query for documents that have the address_city field set to "Lisbon".
+// Note that we use curly braces around the tag. Also note that even though the field is called address_city in the hash, we can query it as "city".
+// That's because in the schema definition we used the ... AS fieldname ... construct, which allowed us to index "address_city" as "city".
+FT.SEARCH idx:schools "@city:{London}"
+
+// Search for all schools in a radius of 30km of a location with a longitude of 51.3 and latitude of 0.32
+FT.SEARCH idx:schools "@location:[51.3 0.32 30 km]"

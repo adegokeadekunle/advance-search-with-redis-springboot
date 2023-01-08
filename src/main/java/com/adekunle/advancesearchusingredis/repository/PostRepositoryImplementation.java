@@ -108,7 +108,7 @@ public class PostRepositoryImplementation implements PostRepository {
     public List<CategoryStatistics> getTotalPostByCategory() {
         AggregationBuilder aggregateBuilder = new AggregationBuilder();
 
-        aggregateBuilder.groupBy("tags",
+        aggregateBuilder.groupBy("@tags",
                 Reducers.count().as("NO_OF_POSTS"),
                 Reducers.avg("@views").as("AVERAGE_VIEW"));
 
@@ -120,11 +120,13 @@ public class PostRepositoryImplementation implements PostRepository {
         LongStream.range(0,aggregationResult.totalResults)
                 .mapToObj(index -> aggregationResult.getRow((int)index))
                 .forEach(row ->{
-                    CategoryStatistics.builder()
+                    categoriesList.add(
+                            CategoryStatistics.builder()
                             .totalPosts(row.getLong("NO_OF_POSTS"))
-                            .averageViews(new DecimalFormat("#.##").format(row.getDouble("AVERAGE_VIEW")))
+                            .averageViews(new DecimalFormat("#.##").format(row.getDouble("AVERAGE_VIEW"))) //formatting to 2 decimal places
                             .tags(row.getString("tags"))
-                            .build();
+                            .build()
+                    );
                 });
         return categoriesList;
     }
