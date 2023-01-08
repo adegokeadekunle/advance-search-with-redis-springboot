@@ -14,6 +14,7 @@ import redis.clients.jedis.search.aggr.AggregationBuilder;
 import redis.clients.jedis.search.aggr.AggregationResult;
 import redis.clients.jedis.search.aggr.Reducers;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -104,11 +105,11 @@ public class PostRepositoryImplementation implements PostRepository {
     }
 
     @Override
-    public void getTotalPostByCategory() {
+    public List<CategoryStatistics> getTotalPostByCategory() {
         AggregationBuilder aggregateBuilder = new AggregationBuilder();
 
         aggregateBuilder.groupBy("tags",
-                Reducers.count().as("NO_OF_POSTS")
+                Reducers.count().as("NO_OF_POSTS"),
                 Reducers.avg("@views").as("AVERAGE_VIEW"));
 
         AggregationResult aggregationResult = unifiedJedis.ftAggregate("post-idx",aggregateBuilder);
@@ -116,8 +117,15 @@ public class PostRepositoryImplementation implements PostRepository {
         List<CategoryStatistics> categoriesList = new ArrayList<>();
 
 
-//        LongStream.range(0,aggregationResult.totalResults)
-//                .mapToObj(index -> aggregationResult.getRow((int)index))
-//                .forEach(row ->)
+        LongStream.range(0,aggregationResult.totalResults)
+                .mapToObj(index -> aggregationResult.getRow((int)index))
+                .forEach(row ->{
+                    CategoryStatistics.builder()
+                            .totalPosts(row.getLong("NO_OF_POSTS"))
+                            .averageViews(new DecimalFormat("#.##").format(row.getDouble("AVERAGE_VIEW")))
+                            .tags(row.getString("tags"))
+                            .build();
+                });
+        return categoriesList;
     }
 }

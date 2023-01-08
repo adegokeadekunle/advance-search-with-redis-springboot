@@ -1,8 +1,10 @@
 package com.adekunle.advancesearchusingredis.repository;
 
+import com.adekunle.advancesearchusingredis.model.CategoryStatistics;
 import com.adekunle.advancesearchusingredis.model.Page;
 import com.adekunle.advancesearchusingredis.model.Post;
 
+import java.util.List;
 import java.util.Set;
 
 public interface PostRepository {
@@ -11,6 +13,5 @@ public interface PostRepository {
     Page searchPost(String content, Set<String> tags, Integer page);
 
     void deletePost();
-
-    void getTotalPostByCategory();
+    List<CategoryStatistics> getTotalPostByCategory();
 }
