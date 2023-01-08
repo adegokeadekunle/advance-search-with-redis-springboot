@@ -1,38 +1,16 @@
 package com.adekunle.advancesearchusingredis.repository;
 
+import com.adekunle.advancesearchusingredis.model.Page;
 import com.adekunle.advancesearchusingredis.model.Post;
-import com.google.gson.Gson;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
-import redis.clients.jedis.UnifiedJedis;
 
 import java.util.Set;
-import java.util.UUID;
 
-@Repository
-@RequiredArgsConstructor
-public class PostRepository {
+public interface PostRepository {
+    Post savePost(Post pt);
 
-    public final UnifiedJedis unifiedJedis;
+    Page searchPost(String content, Set<String> tags, Integer page);
 
-    public Post savePost(Post pt){
-        if(pt.getPostId() == null){
-            pt.setPostId(UUID.randomUUID().toString());
-        }
-        Gson gson = new Gson();
-        String key = "post:"+pt.getPostId();
-        unifiedJedis.jsonSet(key,gson.toJson(pt));
-        unifiedJedis.sadd("post",key);
-        return pt;
-    }
+    void deletePost();
 
-
-    public void deletePost() {
-        Set<String> keys = unifiedJedis.smembers("post");
-        
-        if(!keys.isEmpty()){
-            keys.stream().forEach(unifiedJedis::jsonDel);
-        }
-        unifiedJedis.del("post");
-    }
+    void getTotalPostByCategory();
 }

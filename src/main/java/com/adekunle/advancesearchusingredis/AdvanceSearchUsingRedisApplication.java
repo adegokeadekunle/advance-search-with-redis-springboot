@@ -1,7 +1,7 @@
 package com.adekunle.advancesearchusingredis;
 
 import com.adekunle.advancesearchusingredis.model.Post;
-import com.adekunle.advancesearchusingredis.repository.PostRepository;
+import com.adekunle.advancesearchusingredis.repository.PostRepositoryImplementation;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +29,7 @@ public class AdvanceSearchUsingRedisApplication {
     }
 
     @Autowired
-    private PostRepository postRepository;
+    private PostRepositoryImplementation postRepository;
     @Autowired
     private UnifiedJedis unifiedJedis;
 
@@ -81,4 +81,5 @@ public class AdvanceSearchUsingRedisApplication {
 
         };
     }
+
 }
